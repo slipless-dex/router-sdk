@@ -1,0 +1,40 @@
+{
+  "name": "@slipless/router-sdk",
+  "version": "0.2.0",
+  "description": "Composes V2, V3, and perp routes into a single Trade. Bridges @slipless/v2-sdk, @slipless/v3-sdk, and @slipless/smart-order-router.",
+  "license": "MIT",
+  "author": "Slipless Labs",
+  "homepage": "https://slipless.xyz",
+  "repository": { "type": "git", "url": "git+https://github.com/slipless-dex/router-sdk.git" },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": { "node": ">=18.17" },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@slipless/sdk-core": "^0.4.0",
+    "@slipless/v2-sdk": "^0.2.0",
+    "@slipless/v3-sdk": "^0.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.2"
+  },
+  "keywords": ["slipless", "router", "trade", "multi-protocol"]
+}
