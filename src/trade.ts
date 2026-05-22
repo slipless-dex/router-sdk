@@ -2,6 +2,9 @@ import { CurrencyAmount, Percent, Price, TradeType, Token, ZERO } from "@sliples
 
 import { MixedRoute, type Hop } from "./mixed-route.js";
 
+const ONE = new Percent(1n);
+const ZERO_PCT = new Percent(0n);
+
 export class MixedTrade {
   readonly route: MixedRoute;
   readonly tradeType: TradeType;
@@ -9,7 +12,6 @@ export class MixedTrade {
   readonly outputAmount: CurrencyAmount<Token>;
   readonly executionPrice: Price<Token, Token>;
   readonly priceImpact: Percent;
-  /** Per-hop output amounts. Useful for surfacing partial-fill events. */
   readonly perHopAmounts: readonly CurrencyAmount<Token>[];
 
   private constructor(args: {
@@ -27,7 +29,7 @@ export class MixedTrade {
       baseAmount: args.inputAmount,
       quoteAmount: args.outputAmount,
     });
-    this.priceImpact = computePriceImpactFromMid(args.route, this.executionPrice);
+    this.priceImpact = ZERO_PCT;
   }
 
   static exactIn(
@@ -55,8 +57,7 @@ export class MixedTrade {
 
   minimumAmountOut(slippage: Percent): CurrencyAmount<Token> {
     if (slippage.lessThan(ZERO)) throw new RangeError("slippage must be non-negative");
-    const factor = new Percent(1n).subtract(slippage);
-    const result = this.outputAmount.multiply(factor);
+    const result = this.outputAmount.multiply(ONE.subtract(slippage));
     return CurrencyAmount.fromFractionalAmount(
       this.outputAmount.currency,
       result.numerator,
@@ -66,8 +67,7 @@ export class MixedTrade {
 
   maximumAmountIn(slippage: Percent): CurrencyAmount<Token> {
     if (slippage.lessThan(ZERO)) throw new RangeError("slippage must be non-negative");
-    const factor = new Percent(1n).add(slippage);
-    const result = this.inputAmount.multiply(factor);
+    const result = this.inputAmount.multiply(ONE.add(slippage));
     return CurrencyAmount.fromFractionalAmount(
       this.inputAmount.currency,
       result.numerator,
@@ -83,29 +83,8 @@ function quoteHop(
   initCodeHash: string,
 ): CurrencyAmount<Token> {
   switch (hop.kind) {
-    case "v2": {
-      const [out] = hop.pair.getOutputAmount(input, factory, initCodeHash);
-      return out;
-    }
-    case "v3": {
-      const [out] = hop.pool.getOutputAmount(input);
-      return out;
-    }
-    case "perp": {
-      return hop.market.quoteExactIn(input).output;
-    }
+    case "v2": return hop.pair.getOutputAmount(input, factory, initCodeHash)[0];
+    case "v3": return hop.pool.getOutputAmount(input)[0];
+    case "perp": return hop.market.quoteExactIn(input).output;
   }
-}
-
-/**
- * Hop-by-hop mid-price product, then compare to execution price. This is
- * an approximation when hops are heterogeneous; for an exact figure
- * callers should use `applyImpactPerHop` (not yet exposed).
- */
-function computePriceImpactFromMid(_route: MixedRoute, exec: Price<Token, Token>): Percent {
-  // We don't have a mid price for perp hops without an oracle snapshot, so
-  // fall back to "no impact" (0%) for perp-containing routes. That's a
-  // conservative report — UI should also surface the hop-by-hop fees.
-  void exec;
-  return new Percent(0n);
 }

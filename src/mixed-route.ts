@@ -1,13 +1,3 @@
-/**
- * `MixedRoute` is a chain of hops that may span V2 pairs, V3 pools, and
- * perp markets. Each hop carries enough type information to route to the
- * right `getOutputAmount` implementation at quote time.
- *
- * The discriminated union keeps the API simple at the call-site: callers
- * build a route, ask it for an output, and the protocol-specific quoter
- * is dispatched internally.
- */
-
 import { CurrencyAmount, Token } from "@slipless/sdk-core";
 import { Pair } from "@slipless/v2-sdk";
 import { V3Pool } from "@slipless/v3-sdk";
@@ -17,10 +7,6 @@ export type Hop =
   | { kind: "v3"; pool: V3Pool }
   | { kind: "perp"; market: PerpQuoter };
 
-/**
- * Adapter exposed by `@slipless/sdk` so router-sdk doesn't depend on it
- * directly; consumers wrap their orderbook in this minimal interface.
- */
 export interface PerpQuoter {
   readonly id: string;
   readonly baseAsset: Token;
@@ -40,13 +26,12 @@ export class MixedRoute {
   constructor(hops: readonly Hop[], input: Token, output: Token) {
     if (hops.length === 0) throw new Error("MixedRoute: empty hops");
     const path: Token[] = [input];
+    let current = input;
     for (let i = 0; i < hops.length; i++) {
-      const cur = path[i]!;
-      const hop = hops[i]!;
-      const next = nextTokenFor(hop, cur);
-      path.push(next);
+      current = nextTokenFor(hops[i]!, current);
+      path.push(current);
     }
-    if (!path[path.length - 1]!.equals(output)) {
+    if (!current.equals(output)) {
       throw new Error("MixedRoute: terminal token does not match output");
     }
     this.hops = hops;
